@@ -24,7 +24,7 @@
         const gasUrl = 'https://script.google.com/macros/s/AKfycbyWu98-xyVll3S65Pp7Q59jXjL_brNbWErI4gocn_2Gh37h00cf8MisvbHl9NIzepyk/exec'; // ここにGASの公開URLを貼る
 
         // 2. データを取得して地図を更新する関数
-        async function updateMap() {
+        /*async function updateMap() {
             try {
                 const response = await fetch(gasUrl);
                 const data = await response.json();
@@ -49,6 +49,44 @@
 
         // 3. 5秒ごとにデータを更新（リアルタイム風）
         setInterval(updateMap, 5000);
+        updateMap(); // 初回実行
+        */
+        let pathLine; // 軌跡を表示する線
+        let currentMarker; // 最新地点のマーカー
+        
+        async function updateMap() {
+            try {
+                const response = await fetch(gasUrl);
+                const result = await response.json();
+        
+                if (result.ok && result.data.length > 0) {
+                    // 座標配列を作成 [ [lat, lon], [lat, lon], ... ]
+                    const latLngs = result.data.map(d => [d.lat, d.lon]);
+                    const latest = latLngs[latLngs.length - 1];
+        
+                    // 1. 軌跡（線）を更新
+                    if (pathLine) {
+                        pathLine.setLatLngs(latLngs);
+                    } else {
+                        pathLine = L.polyline(latLngs, {color: 'blue', weight: 3}).addTo(map);
+                    }
+        
+                    // 2. 最新地点のマーカーを更新
+                    if (currentMarker) {
+                        currentMarker.setLatLng(latest);
+                    } else {
+                        currentMarker = L.marker(latest).addTo(map);
+                        map.setView(latest, 17); // 最初だけズーム
+                    }
+                }
+            } catch (error) {
+                console.error("Fetch error:", error);
+            }
+        }
+        
+        // 0.1秒ごとのスプレッドシート更新に対し、
+        // GASへの負荷を考えてサイト側の取得は1〜2秒おきにするのが現実的です。
+        setInterval(updateMap, 2000);
         updateMap(); // 初回実行
     </script>
 </body>
